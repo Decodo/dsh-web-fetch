@@ -1,0 +1,7 @@
+node_modules/
+phase0/results/*.log
+*.tgz
+.DS_Store
+dev/node_modules/
+dev/home/
+dist/

@@ -1,0 +1,12 @@
+{
+  "mode": "gate4",
+  "url": "https://example.com/",
+  "tokenEnvSet": false,
+  "dsh": {
+    "ok": false,
+    "ms": 5,
+    "code": "WEB_PROVIDER_CONFIGURED_UNAVAILABLE",
+    "message": "configured web provider \"decodo\" is registered but unavailable",
+    "timedOut": false
+  }
+}

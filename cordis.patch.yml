@@ -1,0 +1,18 @@
+- id: tool-web
+  config:
+    fetch: true
+    fetchTimeoutMs: 60000
+    searchTimeoutMs: 60000
+
+- id: web
+  config:
+    searchProvider: deepseek-official
+    fetchProvider: decodo
+
+- insert:
+    - id: web-fetch-decodo
+      name: '@decodo/dsh-web-fetch'
+      config:
+        tokenEnv: SCRAPER_API_TOKEN
+        output: markdown
+        maxFetchesPerSession: 200

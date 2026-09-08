@@ -1,0 +1,27 @@
+{
+  "note": "Protected = returned a non-200 to a plain curl on 2026-09-07 (403/429). Plain = returned 200 with content to a plain curl.",
+  "protected": [
+    "https://www.zillow.com/",
+    "https://www.ticketmaster.com/",
+    "https://www.indeed.com/",
+    "https://www.glassdoor.com/",
+    "https://www.homedepot.com/",
+    "https://www.leboncoin.fr/",
+    "https://www.yelp.com/",
+    "https://www.etsy.com/",
+    "https://www.macys.com/",
+    "https://www.kohls.com/"
+  ],
+  "plain": [
+    "https://example.com/",
+    "https://news.ycombinator.com/",
+    "https://www.bbc.com/news",
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP",
+    "https://www.python.org/",
+    "https://nodejs.org/en",
+    "https://www.gnu.org/licenses/gpl-3.0.en.html",
+    "https://httpbin.org/html",
+    "https://www.rust-lang.org/",
+    "https://go.dev/doc/"
+  ]
+}
