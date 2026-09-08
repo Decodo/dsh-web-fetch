@@ -44,8 +44,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
-    "test:e2e": "./phase0/run.sh",
-    "phase0": "./phase0/run.sh",
+    "test:e2e": "./e2e/run.sh",
     "dev:setup": "./dev/setup.sh",
     "dev": "./dev/dsh.sh",
     "dev:web": "./dev/dsh.sh web"

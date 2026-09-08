@@ -2,5 +2,5 @@
   disabled: true
 
 - insert:
-    - id: phase0-bench
-      name: phase0-bench
+    - id: e2e-bench
+      name: e2e-bench

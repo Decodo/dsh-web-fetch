@@ -100,7 +100,7 @@ pnpm test                # unit tests over src/ via node:test and Node's type st
 pnpm dev:setup           # installs dsh under dev/, isolated DSH_HOME in dev/home, links this repo into the headless and web profiles
 pnpm dev "say hi and list your tools"     # one-shot headless run through the linked plugin
 pnpm dev:web             # browser UI at http://127.0.0.1:3080
-SCRAPER_API_TOKEN=... ./phase0/run.sh     # the Phase 0 gates against a fresh dsh install (see phase0/README.md)
+SCRAPER_API_TOKEN=... pnpm test:e2e       # gates against a fresh dsh install (see e2e/README.md)
 ```
 
 `dev/dsh.sh` reads `SCRAPER_API_TOKEN` from the environment and falls back to the Decodo CLI token in

@@ -1,5 +1,5 @@
 node_modules/
-phase0/results/*.log
+e2e/results/
 *.tgz
 .DS_Store
 dev/node_modules/

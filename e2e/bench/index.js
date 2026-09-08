@@ -1,30 +1,30 @@
 import { createRequire } from 'node:module'
 import { readFileSync, writeFileSync } from 'node:fs'
 
-export const name = 'phase0-bench'
+export const name = 'e2e-bench'
 export const inject = ['web']
 
-const TIMEOUT_MS = Number(process.env.PHASE0_TIMEOUT_MS ?? 60000)
-const MAX_OUTPUT_CHARS = Number(process.env.PHASE0_MAX_OUTPUT_CHARS ?? 200000)
+const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 60000)
+const MAX_OUTPUT_CHARS = Number(process.env.E2E_MAX_OUTPUT_CHARS ?? 200000)
 const DIRECT_OK_WINDOW_MS = 20000
-const ORDER = process.env.PHASE0_ORDER ?? 'direct-first'
+const ORDER = process.env.E2E_ORDER ?? 'direct-first'
 
 export function apply(ctx) {
   run(ctx)
     .then((code) => process.exit(code))
     .catch((error) => {
-      console.error('phase0-bench failed:', error)
+      console.error('e2e-bench failed:', error)
       process.exit(2)
     })
 }
 
 async function run(ctx) {
-  const mode = process.env.PHASE0_MODE ?? 'bench'
-  const out = process.env.PHASE0_OUT
+  const mode = process.env.E2E_MODE ?? 'bench'
+  const out = process.env.E2E_OUT
   const { formatFetchOutput } = await loadToolWeb()
 
   if (mode === 'gate4') {
-    const url = process.env.PHASE0_URL ?? 'https://example.com/'
+    const url = process.env.E2E_URL ?? 'https://example.com/'
     const record = await viaDsh(ctx, url, formatFetchOutput)
     const result = { mode, url, tokenEnvSet: Boolean(process.env.SCRAPER_API_TOKEN), dsh: record }
     console.log(JSON.stringify(result, null, 2))
@@ -32,7 +32,7 @@ async function run(ctx) {
     return 0
   }
 
-  const urls = JSON.parse(readFileSync(process.env.PHASE0_URLS, 'utf8'))
+  const urls = JSON.parse(readFileSync(process.env.E2E_URLS, 'utf8'))
   const rows = []
   for (const group of ['protected', 'plain']) {
     for (const url of urls[group]) {
@@ -148,7 +148,7 @@ function round(x) {
 }
 
 async function loadToolWeb() {
-  const dshPkg = process.env.PHASE0_DSH_PKG
+  const dshPkg = process.env.E2E_DSH_PKG
   const fromDsh = createRequire(dshPkg)
   const basePkg = fromDsh.resolve('@deepseek-ai/dsh-base/package.json')
   const fromBase = createRequire(basePkg)

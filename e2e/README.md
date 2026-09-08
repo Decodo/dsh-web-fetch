@@ -1,10 +1,10 @@
-# Phase 0: validation gates
+# End-to-end gates
 
-Run before building on a new dsh release, and again right before any public
-release (dsh moves fast; the spec asks for a re-run against npm latest).
+Run against npm-latest dsh before any release and whenever dsh publishes a new
+version. Results are written to `e2e/results/`, which is git-ignored.
 
 ```
-SCRAPER_API_TOKEN=... ./phase0/run.sh
+SCRAPER_API_TOKEN=... ./e2e/run.sh
 ```
 
 What it does, and how each gate is measured:
@@ -49,5 +49,4 @@ dsh --profile headless --patch dev/model.patch.yml \
 ```
 
 Unset `SCRAPER_API_TOKEN` and run it again: the model must report the
-provider-unavailable error, not page content. Results from 2026-09-08 are in
-`results/headless-with-model.md`.
+provider-unavailable error, not page content. Both checks passed on 2026-09-08 against dsh 0.1.2-rc.1.
