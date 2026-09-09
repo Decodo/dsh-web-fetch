@@ -19,11 +19,11 @@ export const CODES = {
 } as const
 
 export interface Config {
-    tokenEnv: string
-    baseUrl: string
-    output: Output
-    maxFetchesPerSession: number
-    maxContentChars: number
+  tokenEnv: string
+  baseUrl: string
+  output: Output
+  maxFetchesPerSession: number
+  maxContentChars: number
 }
 
 export interface Deps {
@@ -31,15 +31,11 @@ export interface Deps {
   fetch?: typeof fetch
 }
 
-export interface DecodoFetchProvider extends WebFetchProvider {
-    readonly fetchCount: number
-}
-
 interface ScrapeResult {
   content?: unknown
   status_code?: unknown
   url?: unknown
-    help?: unknown
+  help?: unknown
 }
 
 interface ApiPayload {
@@ -81,7 +77,7 @@ export function resolveConfig(config: Partial<Config> | undefined): Config {
   return cfg
 }
 
-export function createDecodoFetchProvider(config: Partial<Config> | undefined, deps: Deps = {}): DecodoFetchProvider {
+export function createDecodoFetchProvider(config: Partial<Config> | undefined, deps: Deps = {}): WebFetchProvider {
   const cfg = resolveConfig(config)
   const env = deps.env ?? process.env
   const fetchImpl = deps.fetch ?? globalThis.fetch
@@ -94,10 +90,7 @@ export function createDecodoFetchProvider(config: Partial<Config> | undefined, d
 
   return {
     id: PROVIDER_ID,
-        available: () => readToken() !== undefined,
-    get fetchCount() {
-      return fetches
-    },
+    available: () => readToken() !== undefined,
     async fetch(request: WebFetchRequest, signal?: AbortSignal): Promise<WebFetchResult> {
       const url = parseUrl(request?.url)
       const token = readToken()
@@ -179,7 +172,7 @@ async function callApi({ fetchImpl, cfg, token, url, signal }: {
   } catch (error) {
     if (signal?.aborted) throw abortError(signal.reason)
     if (isNamed(error, 'AbortError') || isNamed(error, 'TimeoutError')) throw abortError(error)
-    throw new WebError(`could not reach the Decodo API: ${describe(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
+    throw new WebError(`could not reach the Decodo API: ${describeTransportError(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
   }
 }
 
@@ -221,30 +214,30 @@ function apiMessage(payload: ApiPayload | undefined): string {
   return candidate.replace(/\s+/g, ' ').trim().slice(0, 300)
 }
 
-function describe(error: unknown): string {
+function describeTransportError(error: unknown): string {
   const e = error as { message?: unknown; code?: unknown; cause?: { code?: unknown } } | undefined
   const code = e?.cause?.code ?? e?.code
   const message = typeof e?.message === 'string' ? e.message : String(error)
   return typeof code === 'string' ? `${message} (${code})` : message
 }
 
-function isFailedEnvelope(value: unknown): value is { status: 'failed'; message?: unknown } {
+function isFailedEnvelope(value: unknown): value is ApiPayload & { status: 'failed' } {
   return typeof value === 'object' && value !== null && (value as { status?: unknown }).status === 'failed'
 }
 
+function throwIfScrapeFailed(value: unknown, url: string): void {
+  if (!isFailedEnvelope(value)) return
+  const detail = apiMessage(value)
+  throw new WebError(`Decodo could not fetch ${url}${detail ? `: ${detail}` : ''}`, CODES.SCRAPE_FAILED)
+}
+
 function toFetchResult({ payload, url, cfg }: { payload: ApiPayload | undefined; url: string; cfg: Config }): WebFetchResult {
-  if (isFailedEnvelope(payload)) {
-    const detail = apiMessage(payload)
-    throw new WebError(`Decodo could not fetch ${url}${detail ? `: ${detail}` : ''}`, CODES.SCRAPE_FAILED)
-  }
+  throwIfScrapeFailed(payload, url)
   const entry = Array.isArray(payload?.results) ? (payload.results[0] as ScrapeResult | undefined) : undefined
   if (!entry || typeof entry !== 'object') {
     throw new WebError(`Decodo returned no result for ${url}`, CODES.BAD_RESPONSE)
   }
-  if (isFailedEnvelope(entry.content)) {
-    const detail = apiMessage(entry.content as ApiPayload)
-    throw new WebError(`Decodo could not fetch ${url}${detail ? `: ${detail}` : ''}`, CODES.SCRAPE_FAILED)
-  }
+  throwIfScrapeFailed(entry.content, url)
 
   let content: string
   if (entry.content === undefined || entry.content === null) content = ''

@@ -23,7 +23,7 @@ async function run(ctx) {
   const out = process.env.E2E_OUT
   const { formatFetchOutput } = await loadToolWeb()
 
-  if (mode === 'gate4') {
+  if (mode === 'missing-token') {
     const url = process.env.E2E_URL ?? 'https://example.com/'
     const record = await viaDsh(ctx, url, formatFetchOutput)
     const result = { mode, url, tokenEnvSet: Boolean(process.env.SCRAPER_API_TOKEN), dsh: record }
@@ -129,9 +129,9 @@ function summarize(rows) {
   }
   const a = groups.all
   groups.gates = {
-    gate2_successRateVsDirect: { value: a.successRateVsDirect, pass: a.successRateVsDirect !== null && a.successRateVsDirect >= 0.9 },
-    gate3_addedLatencyMedianMs: { value: a.addedLatencyMedianMs, pass: a.addedLatencyMedianMs !== null && a.addedLatencyMedianMs <= 1000 },
-    gate3_dshTimeoutsWhereDirectUnder20s: { value: a.dshTimeoutsWhereDirectUnder20s, pass: a.dshTimeoutsWhereDirectUnder20s === 0 },
+    successRateVsDirect: { value: a.successRateVsDirect, pass: a.successRateVsDirect !== null && a.successRateVsDirect >= 0.9 },
+    addedLatencyMedianMs: { value: a.addedLatencyMedianMs, pass: a.addedLatencyMedianMs !== null && a.addedLatencyMedianMs <= 1000 },
+    timeoutsWhereDirectUnder20s: { value: a.dshTimeoutsWhereDirectUnder20s, pass: a.dshTimeoutsWhereDirectUnder20s === 0 },
   }
   return groups
 }
