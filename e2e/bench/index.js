@@ -85,10 +85,24 @@ async function viaDirect(url) {
   }
 }
 
+const REGISTRATION_WAIT_MS = 15000
+
+async function fetchOnceRegistered(ctx, url) {
+  const deadline = Date.now() + REGISTRATION_WAIT_MS
+  for (;;) {
+    try {
+      return await ctx.web.fetch({ url }, AbortSignal.timeout(TIMEOUT_MS))
+    } catch (error) {
+      if (error?.code !== 'WEB_PROVIDER_CONFIGURED_MISSING' || Date.now() > deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
+}
+
 async function viaDsh(ctx, url, formatFetchOutput) {
   const t0 = performance.now()
   try {
-    const result = await ctx.web.fetch({ url }, AbortSignal.timeout(TIMEOUT_MS))
+    const result = await fetchOnceRegistered(ctx, url)
     const text = formatFetchOutput(result, MAX_OUTPUT_CHARS)
     const ms = Math.round(performance.now() - t0)
     const body = result.body.content

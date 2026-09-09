@@ -1,8 +1,17 @@
+import {
+  AuthenticationError,
+  DecodoClient,
+  DecodoError,
+  RateLimitError,
+  Target,
+  TimeoutError,
+  ValidationError,
+} from '@decodo/sdk-ts'
+import type { ResultEntry, SyncResponse } from '@decodo/sdk-ts'
 import { WebError } from '@deepseek-ai/dsh-web'
 import type { WebFetchBody, WebFetchProvider, WebFetchRequest, WebFetchResult } from '@deepseek-ai/dsh-web'
 
 export const PROVIDER_ID = 'decodo'
-export const DEFAULT_BASE_URL = 'https://scraper-api.decodo.com'
 export const DEFAULT_TOKEN_ENV = 'SCRAPER_API_TOKEN'
 export const INTEGRATION = 'dsh'
 export const OUTPUTS = ['markdown', 'html'] as const
@@ -20,39 +29,23 @@ export const CODES = {
 
 export interface Config {
   tokenEnv: string
-  baseUrl: string
   output: Output
   maxFetchesPerSession: number
   maxContentChars: number
+  requestTimeoutMs: number
 }
 
 export interface Deps {
   env?: Record<string, string | undefined>
-  fetch?: typeof fetch
-}
-
-interface ScrapeResult {
-  content?: unknown
-  status_code?: unknown
-  url?: unknown
-  help?: unknown
-}
-
-interface ApiPayload {
-  status?: unknown
-  message?: unknown
-  errors?: unknown
-  results?: unknown
-  raw?: string
 }
 
 export function defaultConfig(): Config {
   return {
     tokenEnv: DEFAULT_TOKEN_ENV,
-    baseUrl: DEFAULT_BASE_URL,
     output: 'markdown',
     maxFetchesPerSession: 200,
     maxContentChars: 200_000,
+    requestTimeoutMs: 60_000,
   }
 }
 
@@ -60,9 +53,6 @@ export function resolveConfig(config: Partial<Config> | undefined): Config {
   const cfg: Config = { ...defaultConfig(), ...(config ?? {}) }
   if (typeof cfg.tokenEnv !== 'string' || cfg.tokenEnv.trim() === '') {
     throw new TypeError('web-fetch-decodo: tokenEnv must be a non-empty string')
-  }
-  if (typeof cfg.baseUrl !== 'string' || !/^https?:\/\//.test(cfg.baseUrl)) {
-    throw new TypeError('web-fetch-decodo: baseUrl must be an http(s) URL')
   }
   if (!OUTPUTS.includes(cfg.output)) {
     throw new TypeError(`web-fetch-decodo: output must be one of ${OUTPUTS.join(', ')}`)
@@ -73,19 +63,34 @@ export function resolveConfig(config: Partial<Config> | undefined): Config {
   if (!Number.isInteger(cfg.maxContentChars) || cfg.maxContentChars < 1) {
     throw new TypeError('web-fetch-decodo: maxContentChars must be a positive integer')
   }
-  cfg.baseUrl = cfg.baseUrl.replace(/\/+$/, '')
+  if (!Number.isInteger(cfg.requestTimeoutMs) || cfg.requestTimeoutMs < 1) {
+    throw new TypeError('web-fetch-decodo: requestTimeoutMs must be a positive integer')
+  }
   return cfg
 }
 
 export function createDecodoFetchProvider(config: Partial<Config> | undefined, deps: Deps = {}): WebFetchProvider {
   const cfg = resolveConfig(config)
   const env = deps.env ?? process.env
-  const fetchImpl = deps.fetch ?? globalThis.fetch
   let fetches = 0
+  let client: { token: string; api: DecodoClient['webScrapingApi'] } | undefined
 
   const readToken = (): string | undefined => {
     const value = env[cfg.tokenEnv]
     return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
+  }
+
+  const apiFor = (token: string): DecodoClient['webScrapingApi'] => {
+    if (client?.token !== token) {
+      client = {
+        token,
+        api: new DecodoClient({
+          webScrapingApi: { token, integrationHeader: INTEGRATION },
+          timeoutMs: cfg.requestTimeoutMs,
+        }).webScrapingApi,
+      }
+    }
+    return client.api
   }
 
   return {
@@ -109,10 +114,11 @@ export function createDecodoFetchProvider(config: Partial<Config> | undefined, d
       throwIfAborted(signal)
       fetches += 1
 
-      const response = await callApi({ fetchImpl, cfg, token, url, signal })
-      const payload = await readJson(response)
-      if (!response.ok) throw mapHttpError(response.status, payload, url)
-      return toFetchResult({ payload, url, cfg })
+      const scrape = apiFor(token).scrape({ target: Target.Universal, url, markdown: cfg.output === 'markdown' })
+      const response = await untilAborted(scrape, signal).catch((error: unknown) => {
+        throw mapSdkError(error, url)
+      })
+      return toFetchResult({ response, url, cfg })
     },
   }
 }
@@ -149,69 +155,43 @@ function isNamed(value: unknown, name: string): boolean {
   return typeof value === 'object' && value !== null && (value as { name?: unknown }).name === name
 }
 
-async function callApi({ fetchImpl, cfg, token, url, signal }: {
-  fetchImpl: typeof fetch
-  cfg: Config
-  token: string
-  url: string
-  signal: AbortSignal | undefined
-}): Promise<Response> {
-  const body = { url, markdown: cfg.output === 'markdown' }
-  try {
-    return await fetchImpl(`${cfg.baseUrl}/v2/scrape`, {
-      method: 'POST',
-      headers: {
-        authorization: `Basic ${token}`,
-        'content-type': 'application/json',
-        accept: 'application/json',
-        'x-integration': INTEGRATION,
-      },
-      body: JSON.stringify(body),
-      signal,
-    })
-  } catch (error) {
-    if (signal?.aborted) throw abortError(signal.reason)
-    if (isNamed(error, 'AbortError') || isNamed(error, 'TimeoutError')) throw abortError(error)
-    throw new WebError(`could not reach the Decodo API: ${describeTransportError(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
-  }
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) return promise
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError(signal.reason))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
 }
 
-async function readJson(response: Response): Promise<ApiPayload | undefined> {
-  const text = await response.text()
-  if (text === '') return undefined
-  try {
-    return JSON.parse(text) as ApiPayload
-  } catch {
-    return { raw: text }
+function mapSdkError(error: unknown, url: string): WebError {
+  if (error instanceof WebError) return error
+  if (error instanceof AuthenticationError) {
+    return new WebError(`Decodo authentication failed: ${singleLine(error.message)}. Check the Web Scraping API token`, CODES.AUTH_FAILED, { cause: error })
   }
+  if (error instanceof RateLimitError) {
+    return new WebError(`Decodo rate limit reached (HTTP 429): ${singleLine(error.message)}. Retry later`, CODES.RATE_LIMITED, { cause: error })
+  }
+  if (error instanceof ValidationError) {
+    return new WebError(`Decodo rejected the fetch of ${url}: ${singleLine(error.message)}`, CODES.INVALID_REQUEST, { cause: error })
+  }
+  if (error instanceof TimeoutError) {
+    return new WebError('web fetch timed out', 'WEB_FETCH_TIMEOUT', { cause: error })
+  }
+  if (error instanceof DecodoError && (error.statusCode === 400 || error.statusCode === 422)) {
+    return new WebError(`Decodo rejected the fetch of ${url} (HTTP ${error.statusCode}): ${singleLine(error.message)}`, CODES.INVALID_REQUEST, { cause: error })
+  }
+  if (error instanceof DecodoError) {
+    return new WebError(`Decodo could not fetch ${url} (HTTP ${error.statusCode}): ${singleLine(error.message)}`, CODES.SCRAPE_FAILED, { cause: error })
+  }
+  if (error instanceof SyntaxError) {
+    return new WebError(`Decodo returned an unreadable response for ${url}`, CODES.BAD_RESPONSE, { cause: error })
+  }
+  return new WebError(`could not reach the Decodo API: ${describeTransportError(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
 }
 
-function mapHttpError(status: number, payload: ApiPayload | undefined, url: string): WebError {
-  const detail = apiMessage(payload)
-  const suffix = detail ? `: ${detail}` : ''
-  if (status === 401 || status === 403) {
-    return new WebError(`Decodo authentication failed (HTTP ${status})${suffix}. Check the Web Scraping API token`, CODES.AUTH_FAILED)
-  }
-  if (status === 429) {
-    return new WebError(`Decodo rate limit reached (HTTP 429)${suffix}. Retry later`, CODES.RATE_LIMITED)
-  }
-  if (status === 400 || status === 422) {
-    return new WebError(`Decodo rejected the fetch of ${url} (HTTP ${status})${suffix}`, CODES.INVALID_REQUEST)
-  }
-  return new WebError(`Decodo could not fetch ${url} (HTTP ${status})${suffix}`, CODES.SCRAPE_FAILED)
-}
-
-function apiMessage(payload: ApiPayload | undefined): string {
-  let candidate = ''
-  if (typeof payload?.message === 'string') candidate = payload.message
-  else if (typeof payload?.raw === 'string') candidate = payload.raw
-  else if (Array.isArray(payload?.errors)) {
-    candidate = payload.errors
-      .map((e: unknown) => (typeof e === 'string' ? e : (e as { message?: unknown })?.message))
-      .filter((m): m is string => typeof m === 'string' && m !== '')
-      .join('; ')
-  }
-  return candidate.replace(/\s+/g, ' ').trim().slice(0, 300)
+function singleLine(message: string): string {
+  return message.replace(/\s+/g, ' ').trim().slice(0, 300)
 }
 
 function describeTransportError(error: unknown): string {
@@ -221,19 +201,19 @@ function describeTransportError(error: unknown): string {
   return typeof code === 'string' ? `${message} (${code})` : message
 }
 
-function isFailedEnvelope(value: unknown): value is ApiPayload & { status: 'failed' } {
+function isFailedEnvelope(value: unknown): value is { status: 'failed'; message?: unknown } {
   return typeof value === 'object' && value !== null && (value as { status?: unknown }).status === 'failed'
 }
 
 function throwIfScrapeFailed(value: unknown, url: string): void {
   if (!isFailedEnvelope(value)) return
-  const detail = apiMessage(value)
+  const detail = typeof value.message === 'string' ? singleLine(value.message) : ''
   throw new WebError(`Decodo could not fetch ${url}${detail ? `: ${detail}` : ''}`, CODES.SCRAPE_FAILED)
 }
 
-function toFetchResult({ payload, url, cfg }: { payload: ApiPayload | undefined; url: string; cfg: Config }): WebFetchResult {
-  throwIfScrapeFailed(payload, url)
-  const entry = Array.isArray(payload?.results) ? (payload.results[0] as ScrapeResult | undefined) : undefined
+function toFetchResult({ response, url, cfg }: { response: SyncResponse | undefined; url: string; cfg: Config }): WebFetchResult {
+  throwIfScrapeFailed(response, url)
+  const entry: ResultEntry | undefined = Array.isArray(response?.results) ? response.results[0] : undefined
   if (!entry || typeof entry !== 'object') {
     throw new WebError(`Decodo returned no result for ${url}`, CODES.BAD_RESPONSE)
   }
@@ -248,14 +228,14 @@ function toFetchResult({ payload, url, cfg }: { payload: ApiPayload | undefined;
   if (truncated) content = content.slice(0, cfg.maxContentChars)
 
   const kind = bodyKind({ entry, content, cfg })
-  const statusCode = Number.isInteger(entry.status_code) ? (entry.status_code as number) : 200
+  const statusCode = Number.isInteger(entry.status_code) ? entry.status_code : 200
   const finalUrl = typeof entry.url === 'string' && entry.url !== '' ? entry.url : url
   const body: WebFetchBody = kind === 'html' ? { kind: 'html', content } : { kind: 'text', content }
 
   return { url: finalUrl, statusCode, body, truncated }
 }
 
-function bodyKind({ entry, content, cfg }: { entry: ScrapeResult; content: string; cfg: Config }): WebFetchBody['kind'] {
+function bodyKind({ entry, content, cfg }: { entry: ResultEntry; content: string; cfg: Config }): WebFetchBody['kind'] {
   if (cfg.output === 'html') return 'html'
   if (typeof entry.help === 'string' && entry.help !== '') return 'html'
   if (looksLikeHtml(content)) return 'html'

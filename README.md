@@ -54,7 +54,7 @@ Override in your profile's `cordis.patch.yml` (a patch replaces the row's whole 
     output: markdown              # markdown (default) or html
     maxFetchesPerSession: 200     # spend cap per dsh process; 0 disables
     maxContentChars: 200000       # body cap; longer bodies are cut and flagged truncated
-    baseUrl: https://scraper-api.decodo.com
+    requestTimeoutMs: 60000       # SDK-side request timeout, matches the tool's fetchTimeoutMs
 ```
 
 - `output: markdown` asks the API for markdown and hands it to the model unchanged. When the API cannot convert a
@@ -70,9 +70,10 @@ or the cap is raised. The counter is per dsh process; in long-lived profiles suc
 
 ## Errors
 
-Failures reach the model as `Error: <message>` with a code. Provider-specific codes: `DECODO_TOKEN_MISSING`,
-`DECODO_AUTH_FAILED` (401/403), `DECODO_RATE_LIMITED` (429), `DECODO_INVALID_REQUEST` (400/422),
-`DECODO_SCRAPE_FAILED` (5xx or a failed scrape), `DECODO_FETCH_CAP_REACHED`, `DECODO_BAD_RESPONSE`. Shared seam codes
+Failures reach the model as `Error: <message>` with a code. The SDK's error classes map one to one: `AuthenticationError`
+to `DECODO_AUTH_FAILED` (401/403), `RateLimitError` to `DECODO_RATE_LIMITED` (429), `ValidationError` and other 400/422
+responses to `DECODO_INVALID_REQUEST`, `TimeoutError` to `WEB_FETCH_TIMEOUT`, any other `DecodoError` or a failed scrape
+to `DECODO_SCRAPE_FAILED`. The plugin adds `DECODO_TOKEN_MISSING`, `DECODO_FETCH_CAP_REACHED`, and `DECODO_BAD_RESPONSE`. Shared seam codes
 are reused where they fit: `WEB_INVALID_URL`, `WEB_ABORTED`, `WEB_FETCH_TIMEOUT`, `WEB_PROVIDER_ERROR` (transport).
 
 A page that answers with a non-2xx status is a result, not an error: the model sees `Fetched <url> (HTTP <status>)` and
@@ -108,6 +109,8 @@ SCRAPER_API_TOKEN=... pnpm test:e2e       # gates against a fresh dsh install (s
 `llm-pi-ai` adapter (Nexos gateway, `NEXOS_API_KEY`); swap in any endpoint you have. The plugin is linked and the wrapper rebuilds before each run, so edits to
 `src/provider.ts` apply on the next run without reinstalling.
 
-Zero runtime dependencies: raw REST with native `fetch()`. `@deepseek-ai/dsh-web` is a peer dependency for `WebError` and the
-provider types. `@decodo/sdk-ts` was considered and rejected for v1: its HTTP client accepts no external `AbortSignal`, so dsh's
-cancellation could not be honoured, and it would add zod as a runtime dependency.
+The HTTP layer is [`@decodo/sdk-ts`](https://github.com/Decodo/sdk-ts): it owns the endpoint, the Basic auth header, the
+`x-integration` header, request validation, and the error classes the plugin maps onto dsh's `WebError` codes. The one thing the
+SDK cannot do is take an external `AbortSignal`, so the plugin races the SDK call against dsh's signal: the tool call fails
+promptly with `WEB_ABORTED` or `WEB_FETCH_TIMEOUT`, while the underlying request runs on until `requestTimeoutMs`. Keep that
+value at or below the tool's `fetchTimeoutMs`. `@deepseek-ai/dsh-web` is a peer dependency for `WebError` and the provider types.
