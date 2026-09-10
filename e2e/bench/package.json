@@ -1,0 +1,8 @@
+{
+  "name": "e2e-bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "Throwaway dsh plugin that drives ctx.web.fetch over a URL set and writes timings. Not a bundle: no dsh.bundle field."
+}

@@ -1,0 +1,65 @@
+{
+  "name": "@decodo/dsh-web-fetch",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness (dsh) plugin: Decodo Web Scraping API as the provider behind the built-in web_fetch tool, via @decodo/sdk-ts.",
+  "type": "module",
+  "main": "dist/index.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./provider": {
+      "types": "./dist/provider.d.ts",
+      "default": "./dist/provider.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "web-fetch",
+    "fetch-provider",
+    "decodo",
+    "cordis",
+    "plugin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "node --test test/*.test.ts",
+    "test:e2e": "./e2e/run.sh",
+    "dev:setup": "./dev/setup.sh",
+    "dev": "./dev/dsh.sh",
+    "dev:web": "./dev/dsh.sh web"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-web": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-web": "0.1.2-rc.1",
+    "@types/node": "^24",
+    "typescript": "^5.9"
+  },
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@decodo/sdk-ts": "^2.3.0"
+  }
+}

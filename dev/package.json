@@ -1,0 +1,17 @@
+{
+  "name": "dsh-web-fetch-dev",
+  "private": true,
+  "description": "Local dsh install for developing and demoing @decodo/dsh-web-fetch. node_modules and home/ are git-ignored.",
+  "dependencies": {
+    "@deepseek-ai/dsh": "latest"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@deepseek-ai/dsh-subprocess-local",
+      "@google/genai",
+      "koffi",
+      "node-pty",
+      "protobufjs"
+    ]
+  }
+}
