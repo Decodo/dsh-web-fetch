@@ -5,5 +5,9 @@
     "rootDir": ".",
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "test"]
+  "include": [
+    "src",
+    "test",
+    "e2e/bench"
+  ]
 }

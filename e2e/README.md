@@ -1,7 +1,9 @@
 # End-to-end gates
 
 Run against npm-latest dsh before any release and whenever dsh publishes a new
-version. Results are written to `e2e/results/`, which is git-ignored.
+version. Results are written to `e2e/results/`, which is git-ignored. The bench
+plugin is TypeScript that dsh loads unbuilt, so the runner needs Node 22.18 or
+newer for native type stripping; the plugin itself still runs on Node 20.
 
 ```
 SCRAPER_API_TOKEN=... ./e2e/run.sh
