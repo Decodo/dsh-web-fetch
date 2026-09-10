@@ -26,8 +26,10 @@ What it does, and how each gate is measured:
 3. **Added latency.** Same pairs: median of (dsh ms - direct ms) at or under 1s,
    and zero dsh-side timeouts on URLs whose direct call finished within 20s.
    Absolute p50/p95 per group are reported as information.
-4. **Missing token.** Same boot with `SCRAPER_API_TOKEN` unset, one fetch.
-   Pass when a clear error is thrown and no other provider answers.
+4. **Missing credentials.** Same boot with `DECODO_API_KEY` and `SCRAPER_API_TOKEN`
+   unset, one fetch. Pass when a clear error is thrown and no other provider
+   answers. Two more runs with a wrong token and a wrong API key expect the
+   API's auth error.
 
 Method note: the bench is a throwaway plugin inserted with a `--patch` overlay
 that disables the headless agent runner, so no model is in the loop. It calls

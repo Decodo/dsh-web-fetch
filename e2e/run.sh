@@ -47,7 +47,7 @@ process.exit(bad)' "$RESULTS/bench.json" || failed=1
 expect_code() {
   node -e 'process.exit(require(process.argv[1]).dsh.code === process.argv[2] ? 0 : 1)' "$1" "$2"
 }
-env -u SCRAPER_API_TOKEN E2E_MODE=missing-token E2E_OUT="$RESULTS/missing-token.json" \
+env -u SCRAPER_API_TOKEN -u DECODO_API_KEY E2E_MODE=missing-token E2E_OUT="$RESULTS/missing-token.json" \
   "$DSH" --profile headless --patch "$ROOT/e2e/bench.patch.yml" "noop" >/dev/null
 expect_code "$RESULTS/missing-token.json" WEB_PROVIDER_CONFIGURED_UNAVAILABLE
 gate "missing token fails clearly with no fallback" $?
@@ -56,5 +56,10 @@ SCRAPER_API_TOKEN=bm90YXRva2Vu E2E_MODE=missing-token E2E_OUT="$RESULTS/wrong-to
   "$DSH" --profile headless --patch "$ROOT/e2e/bench.patch.yml" "noop" >/dev/null
 expect_code "$RESULTS/wrong-token.json" DECODO_AUTH_FAILED
 gate "wrong token surfaces the API auth error" $?
+
+env -u SCRAPER_API_TOKEN DECODO_API_KEY=notakey E2E_MODE=missing-token E2E_OUT="$RESULTS/wrong-api-key.json" \
+  "$DSH" --profile headless --patch "$ROOT/e2e/bench.patch.yml" "noop" >/dev/null
+expect_code "$RESULTS/wrong-api-key.json" DECODO_AUTH_FAILED
+gate "wrong API key surfaces the API auth error" $?
 
 exit $failed

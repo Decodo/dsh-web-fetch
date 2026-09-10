@@ -13,6 +13,7 @@
     - id: web-fetch-decodo
       name: '@decodo/dsh-web-fetch'
       config:
+        apiKeyEnv: DECODO_API_KEY
         tokenEnv: SCRAPER_API_TOKEN
         output: markdown
         maxFetchesPerSession: 200

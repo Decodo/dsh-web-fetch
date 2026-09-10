@@ -6,6 +6,7 @@ import { CODES, INTEGRATION, PROVIDER_ID, createDecodoFetchProvider, resolveConf
 import type { Config } from '../src/provider.ts'
 
 const TOKEN = 'dGVzdDp0ZXN0'
+const API_KEY = 'dk_test_key'
 const SCRAPE_URL = 'https://scraper-api.decodo.com/v2/scrape'
 
 interface RecordedCall {
@@ -76,12 +77,40 @@ async function rejectsWith(promise: Promise<unknown>, code: string): Promise<Web
   return caught
 }
 
-test('id and available(): env presence only', () => {
+test('id and available(): env presence of either credential, never a network call', () => {
   assert.equal(makeProvider().id, PROVIDER_ID)
   assert.equal(makeProvider().available(), true)
+  assert.equal(makeProvider({ env: { DECODO_API_KEY: API_KEY } }).available(), true)
   assert.equal(makeProvider({ env: {} }).available(), false)
-  assert.equal(makeProvider({ env: { SCRAPER_API_TOKEN: '   ' } }).available(), false)
+  assert.equal(makeProvider({ env: { SCRAPER_API_TOKEN: '   ', DECODO_API_KEY: '' } }).available(), false)
   assert.equal(makeProvider({ env: { MY_TOKEN: TOKEN }, config: { tokenEnv: 'MY_TOKEN' } }).available(), true)
+  assert.equal(makeProvider({ env: { MY_KEY: API_KEY }, config: { apiKeyEnv: 'MY_KEY' } }).available(), true)
+})
+
+test('an API key is sent as Bearer auth', async () => {
+  await withFetch(replyOk, async (calls) => {
+    await makeProvider({ env: { DECODO_API_KEY: API_KEY } }).fetch({ url: 'https://example.com/' })
+    assert.equal(calls[0]!.headers.Authorization, `Bearer ${API_KEY}`)
+  })
+})
+
+test('the API key wins when both credentials are set', async () => {
+  await withFetch(replyOk, async (calls) => {
+    await makeProvider({ env: { DECODO_API_KEY: API_KEY, SCRAPER_API_TOKEN: TOKEN } }).fetch({ url: 'https://example.com/' })
+    assert.equal(calls[0]!.headers.Authorization, `Bearer ${API_KEY}`)
+  })
+})
+
+test('switching credentials between calls rebuilds the client', async () => {
+  await withFetch(replyOk, async (calls) => {
+    const env: Record<string, string> = { SCRAPER_API_TOKEN: TOKEN }
+    const provider = makeProvider({ env })
+    await provider.fetch({ url: 'https://example.com/' })
+    env.DECODO_API_KEY = API_KEY
+    await provider.fetch({ url: 'https://example.com/' })
+    assert.equal(calls[0]!.headers.Authorization, `Basic ${TOKEN}`)
+    assert.equal(calls[1]!.headers.Authorization, `Bearer ${API_KEY}`)
+  })
 })
 
 test('request shape through the SDK: POST /v2/scrape, Basic auth, universal target, markdown flag, integration header', async () => {
@@ -162,9 +191,11 @@ test('body is capped at maxContentChars and flagged truncated', async () => {
   })
 })
 
-test('missing token: clear error, no request made', async () => {
+test('missing credentials: the error names both variables, no request made', async () => {
   await withFetch(replyOk, async (calls) => {
-    await rejectsWith(makeProvider({ env: {} }).fetch({ url: 'https://example.com/' }), CODES.TOKEN_MISSING)
+    const error = await rejectsWith(makeProvider({ env: {} }).fetch({ url: 'https://example.com/' }), CODES.TOKEN_MISSING)
+    assert.match(error.message, /DECODO_API_KEY/)
+    assert.match(error.message, /SCRAPER_API_TOKEN/)
     assert.equal(calls.length, 0)
   })
 })
@@ -297,6 +328,7 @@ test('resolveConfig validates and normalizes', () => {
   assert.equal(resolveConfig({}).requestTimeoutMs, 60_000)
   assert.throws(() => resolveConfig({ output: 'pdf' as Config['output'] }), /output must be one of/)
   assert.throws(() => resolveConfig({ tokenEnv: '' }), /tokenEnv/)
+  assert.throws(() => resolveConfig({ apiKeyEnv: '' }), /apiKeyEnv/)
   assert.throws(() => resolveConfig({ maxFetchesPerSession: -1 }), /maxFetchesPerSession/)
   assert.throws(() => resolveConfig({ maxFetchesPerSession: 1.5 }), /maxFetchesPerSession/)
   assert.throws(() => resolveConfig({ maxContentChars: 0 }), /maxContentChars/)

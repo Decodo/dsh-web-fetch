@@ -13,6 +13,7 @@ import type { WebFetchBody, WebFetchProvider, WebFetchRequest, WebFetchResult } 
 
 export const PROVIDER_ID = 'decodo'
 export const DEFAULT_TOKEN_ENV = 'SCRAPER_API_TOKEN'
+export const DEFAULT_API_KEY_ENV = 'DECODO_API_KEY'
 export const INTEGRATION = 'dsh'
 export const OUTPUTS = ['markdown', 'html'] as const
 export type Output = (typeof OUTPUTS)[number]
@@ -29,6 +30,7 @@ export const CODES = {
 
 export interface Config {
   tokenEnv: string
+  apiKeyEnv: string
   output: Output
   maxFetchesPerSession: number
   maxContentChars: number
@@ -39,9 +41,12 @@ export interface Deps {
   env?: Record<string, string | undefined>
 }
 
+export type Credential = { apiKey: string } | { token: string }
+
 export function defaultConfig(): Config {
   return {
     tokenEnv: DEFAULT_TOKEN_ENV,
+    apiKeyEnv: DEFAULT_API_KEY_ENV,
     output: 'markdown',
     maxFetchesPerSession: 200,
     maxContentChars: 200_000,
@@ -53,6 +58,9 @@ export function resolveConfig(config: Partial<Config> | undefined): Config {
   const cfg: Config = { ...defaultConfig(), ...(config ?? {}) }
   if (typeof cfg.tokenEnv !== 'string' || cfg.tokenEnv.trim() === '') {
     throw new TypeError('web-fetch-decodo: tokenEnv must be a non-empty string')
+  }
+  if (typeof cfg.apiKeyEnv !== 'string' || cfg.apiKeyEnv.trim() === '') {
+    throw new TypeError('web-fetch-decodo: apiKeyEnv must be a non-empty string')
   }
   if (!OUTPUTS.includes(cfg.output)) {
     throw new TypeError(`web-fetch-decodo: output must be one of ${OUTPUTS.join(', ')}`)
@@ -73,19 +81,28 @@ export function createDecodoFetchProvider(config: Partial<Config> | undefined, d
   const cfg = resolveConfig(config)
   const env = deps.env ?? process.env
   let fetches = 0
-  let client: { token: string; api: DecodoClient['webScrapingApi'] } | undefined
+  let client: { secret: string; api: DecodoClient['webScrapingApi'] } | undefined
 
-  const readToken = (): string | undefined => {
-    const value = env[cfg.tokenEnv]
+  const readEnv = (name: string): string | undefined => {
+    const value = env[name]
     return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
   }
 
-  const apiFor = (token: string): DecodoClient['webScrapingApi'] => {
-    if (client?.token !== token) {
+  const readCredential = (): Credential | undefined => {
+    const apiKey = readEnv(cfg.apiKeyEnv)
+    if (apiKey !== undefined) return { apiKey }
+    const token = readEnv(cfg.tokenEnv)
+    if (token !== undefined) return { token }
+    return undefined
+  }
+
+  const apiFor = (credential: Credential): DecodoClient['webScrapingApi'] => {
+    const secret = 'apiKey' in credential ? `apiKey:${credential.apiKey}` : `token:${credential.token}`
+    if (client?.secret !== secret) {
       client = {
-        token,
+        secret,
         api: new DecodoClient({
-          webScrapingApi: { token, integrationHeader: INTEGRATION },
+          webScrapingApi: { ...credential, integrationHeader: INTEGRATION },
           timeoutMs: cfg.requestTimeoutMs,
         }).webScrapingApi,
       }
@@ -95,13 +112,13 @@ export function createDecodoFetchProvider(config: Partial<Config> | undefined, d
 
   return {
     id: PROVIDER_ID,
-    available: () => readToken() !== undefined,
+    available: () => readCredential() !== undefined,
     async fetch(request: WebFetchRequest, signal?: AbortSignal): Promise<WebFetchResult> {
       const url = parseUrl(request?.url)
-      const token = readToken()
-      if (token === undefined) {
+      const credential = readCredential()
+      if (credential === undefined) {
         throw new WebError(
-          `Decodo web fetch is not configured: set the ${cfg.tokenEnv} environment variable to your Decodo Web Scraping API token`,
+          `Decodo web fetch is not configured: set ${cfg.apiKeyEnv} to your Decodo API key, or ${cfg.tokenEnv} to a Web Scraping API token`,
           CODES.TOKEN_MISSING,
         )
       }
@@ -114,7 +131,7 @@ export function createDecodoFetchProvider(config: Partial<Config> | undefined, d
       throwIfAborted(signal)
       fetches += 1
 
-      const scrape = apiFor(token).scrape({ target: Target.Universal, url, markdown: cfg.output === 'markdown' })
+      const scrape = apiFor(credential).scrape({ target: Target.Universal, url, markdown: cfg.output === 'markdown' })
       const response = await untilAborted(scrape, signal).catch((error: unknown) => {
         throw mapSdkError(error, url)
       })
@@ -167,7 +184,7 @@ function untilAborted<T>(promise: Promise<T>, signal: AbortSignal | undefined): 
 function mapSdkError(error: unknown, url: string): WebError {
   if (error instanceof WebError) return error
   if (error instanceof AuthenticationError) {
-    return new WebError(`Decodo authentication failed: ${singleLine(error.message)}. Check the Web Scraping API token`, CODES.AUTH_FAILED, { cause: error })
+    return new WebError(`Decodo authentication failed: ${singleLine(error.message)}. Check the Decodo API key or token`, CODES.AUTH_FAILED, { cause: error })
   }
   if (error instanceof RateLimitError) {
     return new WebError(`Decodo rate limit reached (HTTP 429): ${singleLine(error.message)}. Retry later`, CODES.RATE_LIMITED, { cause: error })

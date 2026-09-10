@@ -13,7 +13,7 @@ Use pnpm (dsh's own plugin manager forwards to pnpm; `npx @deepseek-ai/dsh` is k
 ```sh
 pnpm add -g @deepseek-ai/dsh
 dsh plugin --profile <name> add @decodo/dsh-web-fetch     # e.g. --profile headless, --profile web
-export SCRAPER_API_TOKEN=<your Web Scraping API token>    # the Basic token from the dashboard playground
+export DECODO_API_KEY=<your Decodo API key>               # or SCRAPER_API_TOKEN=<Web Scraping API Basic token>
 ```
 
 That is the whole install. The package ships a bundle patch that dsh inserts into the profile's layer
@@ -23,7 +23,8 @@ stack, so no manual `cordis.patch.yml` edit is needed. Verify with:
 dsh --profile <name> --dump-config | grep -A4 -E '^- id: (web|tool-web|web-fetch-decodo)$'
 ```
 
-The token is the same one the Decodo MCP server and CLI use.
+Either credential works. The API key is the newer one and wins when both are set, matching the Decodo CLI. The Basic token is
+the one the MCP server and older CLI setups use.
 
 ## What installing changes in your profile
 
@@ -50,7 +51,8 @@ Override in your profile's `cordis.patch.yml` (a patch replaces the row's whole 
 ```yaml
 - id: web-fetch-decodo
   config:
-    tokenEnv: SCRAPER_API_TOKEN   # env var holding the Web Scraping API Basic token
+    apiKeyEnv: DECODO_API_KEY     # env var holding the Decodo API key (preferred)
+    tokenEnv: SCRAPER_API_TOKEN   # env var holding the Web Scraping API Basic token (fallback)
     output: markdown              # markdown (default) or html
     maxFetchesPerSession: 200     # spend cap per dsh process; 0 disables
     maxContentChars: 200000       # body cap; longer bodies are cut and flagged truncated
@@ -79,7 +81,7 @@ are reused where they fit: `WEB_INVALID_URL`, `WEB_ABORTED`, `WEB_FETCH_TIMEOUT`
 A page that answers with a non-2xx status is a result, not an error: the model sees `Fetched <url> (HTTP <status>)` and
 whatever body came back, matching dsh's seam contract.
 
-With the token env var unset the provider reports itself unavailable and dsh fails the call with
+With neither credential set the provider reports itself unavailable and dsh fails the call with
 `WEB_PROVIDER_CONFIGURED_UNAVAILABLE`. It never falls back to another provider.
 
 ## Disclosures

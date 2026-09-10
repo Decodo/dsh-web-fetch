@@ -69,7 +69,7 @@ async function run(ctx: Context): Promise<number> {
   if (mode === 'missing-token') {
     const url = process.env.E2E_URL ?? 'https://example.com/'
     const record = await viaDsh(ctx, url, formatFetchOutput)
-    const result = { mode, url, tokenEnvSet: Boolean(process.env.SCRAPER_API_TOKEN), dsh: record }
+    const result = { mode, url, credentialSet: Boolean(process.env.DECODO_API_KEY || process.env.SCRAPER_API_TOKEN), dsh: record }
     console.log(JSON.stringify(result, null, 2))
     if (out) writeFileSync(out, JSON.stringify(result, null, 2))
     return 0

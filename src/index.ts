@@ -3,7 +3,7 @@ import { createDecodoFetchProvider } from './provider.ts'
 import type { Config } from './provider.ts'
 
 export { CODES, INTEGRATION, PROVIDER_ID, createDecodoFetchProvider, defaultConfig, resolveConfig } from './provider.ts'
-export type { Config, Deps, Output } from './provider.ts'
+export type { Config, Credential, Deps, Output } from './provider.ts'
 
 export const name = 'web-fetch-decodo'
 export const inject = ['web']
