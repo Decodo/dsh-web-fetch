@@ -5,11 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "files": [
     "dist",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -61,5 +62,13 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@decodo/sdk-ts": "^2.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Decodo/dsh-web-fetch.git"
+  },
+  "homepage": "https://github.com/Decodo/dsh-web-fetch",
+  "bugs": {
+    "url": "https://github.com/Decodo/dsh-web-fetch/issues"
   }
 }
