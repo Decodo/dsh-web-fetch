@@ -43,10 +43,10 @@ tool's rendering is included.
 
 For a real `web_fetch` call made by the agent, add a model overlay. Any
 OpenAI-compatible endpoint works through the `llm-pi-ai` adapter;
-`dev/model.patch.yml` targets the Nexos gateway with `NEXOS_API_KEY`.
+`dev/model.patch.yml` reads `TEST_GATEWAY_URL`, `TEST_API_KEY`, and `TEST_MODEL`.
 
 ```
-export DSH_HOME=<scratch>/home SCRAPER_API_TOKEN=... NEXOS_API_KEY=...
+export DSH_HOME=<scratch>/home DECODO_API_KEY=... TEST_GATEWAY_URL=... TEST_API_KEY=... TEST_MODEL=...
 dsh plugin --profile headless add <this repo>
 dsh --profile headless --patch dev/model.patch.yml \
   "Call web_fetch on https://www.zillow.com/ and report the status and first heading"

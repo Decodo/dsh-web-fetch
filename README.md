@@ -108,7 +108,7 @@ SCRAPER_API_TOKEN=... pnpm test:e2e       # gates against a fresh dsh install (s
 
 `dev/dsh.sh` reads `SCRAPER_API_TOKEN` from the environment and falls back to the Decodo CLI token in
 `~/.config/decodo/config.json`. The model comes from `dev/model.patch.yml`, an OpenAI-compatible route through the
-`llm-pi-ai` adapter (Nexos gateway, `NEXOS_API_KEY`); swap in any endpoint you have. The plugin is linked and the wrapper rebuilds before each run, so edits to
+`llm-pi-ai` adapter configured by `TEST_GATEWAY_URL`, `TEST_API_KEY`, and `TEST_MODEL`; any chat-completions endpoint works. The plugin is linked and the wrapper rebuilds before each run, so edits to
 `src/provider.ts` apply on the next run without reinstalling.
 
 The HTTP layer is [`@decodo/sdk-ts`](https://github.com/Decodo/sdk-ts): it owns the endpoint, the Basic auth header, the

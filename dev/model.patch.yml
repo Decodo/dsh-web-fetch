@@ -2,17 +2,17 @@
   name: '@deepseek-ai/dsh-llm-pi-ai'
   config:
     providers:
-      nexos:
-        displayName: Nexos Gateway
-        apiKeyEnv: NEXOS_API_KEY
+      test-gateway:
+        displayName: Test gateway
+        apiKeyEnv: TEST_API_KEY
         api: openai-completions
-        baseURL: https://api.nexos.ai/v1
+        baseURL: !!js process.env.TEST_GATEWAY_URL
         models:
-          - id: Claude Sonnet 4.6
+          - id: !!js process.env.TEST_MODEL
             contextWindow: 200000
 
 - id: agent-default-model
   name: '@deepseek-ai/dsh-agent-default-model'
   config:
-    provider: nexos
-    model: Claude Sonnet 4.6
+    provider: test-gateway
+    model: !!js process.env.TEST_MODEL
