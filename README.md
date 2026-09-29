@@ -1,73 +1,75 @@
 # Decodo for DeepSeek Harness
 
-[![](https://dcbadge.limes.pink/api/server/https://discord.gg/Ja8dqKgvbZ)](https://discord.gg/Ja8dqKgvbZ)
+[![Join the Decodo Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/Ja8dqKgvbZ)](https://discord.gg/Ja8dqKgvbZ)
 
 <p align="center">
-<a href="https://dashboard.decodo.com/integrations?utm_source=github&utm_medium=social&utm_campaign=dsh_web_fetch"> <img src="https://github.com/user-attachments/assets/a1e52a9e-3da1-4081-b3c6-053aafb8f196"/></a>
+<a href="https://dashboard.decodo.com/integrations?utm_source=github&utm_medium=social&utm_campaign=dsh_web_fetch"> <img src="https://github.com/user-attachments/assets/a1e52a9e-3da1-4081-b3c6-053aafb8f196" alt="Decodo Web Scraping API integration for DeepSeek Harness"/> 
+</a>
 </p>
 
-A fetch provider plugin for [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness), powered by the [Decodo Web Scraping API](https://decodo.com/scraping/web).
+A web fetch plugin for [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) that routes the agent's built-in `web_fetch` tool through the Decodo [Web Scraping API](https://decodo.com/scraping/web) to retrieve content from sites that block anonymous requests.
 
-Install it and the agent's own `web_fetch` tool runs through Decodo. Pages that block an anonymous request come back anyway, converted to clean markdown, without you writing a tool, a prompt, or a line of scraping code.
+Install the plugin and the agent keeps calling `web_fetch` as usual. Decodo retrieves the page and returns readable content, with Markdown by default. You don't need to add a new agent tool or change its prompts.
 
-- Works on sites that refuse a plain fetch: retail, real estate, jobs, ticketing
-- Markdown by default, so the model reads prose instead of markup
-- JavaScript rendering, anti-bot bypass, and CAPTCHA handling server-side
-- 125M+ residential IPs across 195+ locations
-- A per-session spend cap, because agents loop
+- Fetch pages that may return a `403` or bot challenge to a direct request, including retail, real estate, and job listings.
+- Render JavaScript-heavy pages and handle bot protection through the API. Some sites may still reject a request.
+- Give the model Markdown by default; if Decodo returns HTML, dsh converts it to readable text.
+- Set a per-process fetch cap so an agent loop cannot keep making API requests indefinitely.
 
-## What is this?
+[Create a Decodo account](https://dashboard.decodo.com/) to start a free plan with up to 2K requests. No credit card required.
 
-dsh ships a built-in `web_fetch` tool and a provider seam behind it. This package registers Decodo on that seam and pins it as the provider, so every URL the agent opens is retrieved by Decodo instead of by an anonymous request from your machine.
+## How Decodo works with DeepSeek Harness
 
-Nothing about the agent's tool changes. `web_fetch` keeps its name, its schema, and its output format. Only the machinery behind it changes.
+DeepSeek Harness exposes a built-in `web_fetch` tool with a provider seam behind it. The plugin registers Decodo at that seam and pins it as the fetch provider for the profile where you install it.
 
-## Why use it?
+The agent still calls `web_fetch` with the same name and schema, and receives the same tool output format. The retrieval happens through Decodo rather than a direct request from the DeepSeek Harness process. The plugin does not replace `web_search`.
 
-dsh's built-in fetch provider makes a direct, anonymous HTTP request. That is fine for docs and blogs, and it stops working the moment the agent points at a site with bot protection. The agent gets a challenge page or a 403 and reports back that the page is empty.
+## When to use the Decodo plugin
+
+A direct fetch may receive a `403`, a bot challenge, or an unrendered page. For AI agent web scraping, Decodo handles retrieval and JavaScript rendering server-side, with anti-bot and CAPTCHA handling to help bypass bot detection where possible. Success still depends on the target page.
 
 Use this plugin when your agent needs to read the web as it actually is:
 
-- **Protected sites.** Retail, real estate, jobs, travel, ticketing: the pages that block scripts by default.
-- **JavaScript-heavy pages.** Rendered server-side before the content reaches the model.
-- **Clean input for the model.** Decodo's markdown instead of a raw HTML document the agent has to wade through.
-- **Geo-specific content.** Requests leave from Decodo's network, not your IP.
+- **Blocked sites**. Fetch retail, real estate, travel, or ticketing pages that may reject anonymous requests.
+- **Rendered pages**. Read content that appears only after JavaScript runs.
+- **Readable input**. Pass Markdown to the model when the API can convert the page; DeepSeek Harness converts returned HTML otherwise.
+- **Location-dependent pages**. Retrieve through Decodo's residential IP network instead of your machine's IP. This plugin does not expose a location selector in the configuration below.
 
-Fetch only. Search stays with whatever search provider your profile already uses.
+The plugin gives the agent an API-backed fetch provider without requiring you to configure a separate web scraping proxy. Fetching uses Decodo; search remains with your profile's existing search provider.
 
 ## Key features
 
-- **Every fetch goes through Decodo, with no tool selection.** The agent does not choose a scraping tool or learn a new one. It calls `web_fetch` as it always did.
+- **Every fetch goes through Decodo, with no tool selection**. The agent does not choose a scraping tool or learn a new one. It calls `web_fetch` as it always did.
 
-- **Markdown by default.** The API returns Decodo's markdown and the plugin hands it to the model untouched. When conversion is not possible the raw HTML comes back and dsh converts it, so the model always gets readable text.
+- **Markdown by default**. The API returns Decodo's Markdown and the plugin hands it to the model untouched. When conversion isn't possible, the raw HTML comes back and DeepSeek Harness converts it, so the model always gets readable text.
 
-- **An explicit provider pin.** The bundle patch pins `fetchProvider: decodo` rather than relying on being the only provider mounted, so it keeps working when dsh ships its own.
+- **An explicit provider pin**. The bundle patch pins `fetchProvider: decodo` rather than relying on being the only provider mounted, so it keeps working when other providers are mounted.
 
-- **A spend cap.** A configurable per-session ceiling on requests, with a clear error to the model when it is reached. Agent loops are the main bill-shock risk.
+- **A fetch limit**. A configurable per-process ceiling on requests, with a clear error to the model when it is reached. Agent loops are the main bill-shock risk.
 
-- **Errors the model can act on.** Auth, rate limit, validation, timeout, and scrape failures each map to a distinct code with a single-line message.
+- **Errors the model can act on**. Auth, rate limit, validation, timeout, and scrape failures each map to a distinct code with a single-line message.
 
-- **One command to install.** The package ships a dsh bundle patch, so `dsh plugin add` wires everything up with no config file to edit.
+- **Install with the `dsh` CLI**. The package ships a DeepSeek Harness bundle patch, so `dsh plugin --profile <name> add` wires everything up with no config file to edit.
 
 ## Use cases
 
-- **Competitive and pricing research.** Point an agent at retail or marketplace pages and let it read them.
-- **Lead and company research.** Directory, listing, and profile pages that block anonymous requests.
-- **Documentation and content gathering.** Long pages reduced to markdown before they reach the context window.
-- **Agent workflows that already use dsh.** Add reliable fetching without changing prompts or tools.
+- **Competitive and pricing research**. Point an agent at retail or marketplace pages and let it read them.
+- **Lead and company research**. Directory, listing, and profile pages that block anonymous requests.
+- **Documentation and content gathering**. Long pages reduced to Markdown before they reach the context window.
+- **Existing DeepSeek Harness workflows**. Add API-backed fetching without changing prompts or tools.
 
 ## Quick start
 
-1. **Create a free account** at [dashboard.decodo.com](https://dashboard.decodo.com/) and get up to 2K free requests, no credit card required.
-2. **Get your API key** from the Decodo [dashboard](https://dashboard.decodo.com/).
-3. **Install Node.js 20+** from [nodejs.org](https://nodejs.org/).
-4. **Install dsh and this plugin** with the commands below.
-5. **Ask the agent to fetch a page** that a plain request cannot reach.
+1. **Create an account** on the Decodo [dashboard](https://dashboard.decodo.com/).
+2. **Get your Web Scraping API Basic Auth token** from the Decodo [Playground](https://dashboard.decodo.com/playground).
+3. **Install Node.js 20+ and pnpm 10.x** using the instructions at [nodejs.org](https://nodejs.org/) and [pnpm.io](https://pnpm.io/).
+4. **Install DeepSeek Harness and this plugin** with the commands below.
+5. **Ask the agent to fetch a page** and check the status and content it returns.
 
 ```sh
 pnpm add -g @deepseek-ai/dsh
 dsh plugin --profile headless add @decodo/dsh-web-fetch
-export DECODO_API_KEY='your-api-key'
+export SCRAPER_API_TOKEN='your-token'
 
 dsh --profile headless "Fetch https://www.zillow.com/ and tell me the first heading"
 ```
@@ -76,7 +78,7 @@ dsh --profile headless "Fetch https://www.zillow.com/ and tell me the first head
 
 > **Requires [Node.js](https://nodejs.org/) 20+ and [pnpm](https://pnpm.io/)**
 
-Use pnpm. dsh's own plugin manager forwards to it, and `npx @deepseek-ai/dsh` is known to hang npm's resolver for minutes.
+Use pnpm for this DeepSeek Harness install. The `dsh` CLI plugin manager forwards to pnpm.
 
 ```sh
 pnpm add -g @deepseek-ai/dsh
@@ -85,21 +87,15 @@ dsh plugin --profile <name> add @decodo/dsh-web-fetch
 
 `<name>` is the dsh profile you use, for example `headless` for one-shot runs or `web` for the browser UI. Install into each profile you want covered.
 
-That is the whole install. The package ships a bundle patch that dsh inserts into the profile's layer stack, so there is no `cordis.patch.yml` to edit by hand.
+That's the whole install. The package ships a bundle patch that dsh inserts into the profile's layer stack, so there is no `cordis.patch.yml` to edit by hand.
 
 ## Authentication
 
-Get an API key from the [Decodo dashboard](https://dashboard.decodo.com/).
+Copy your Web Scraping API Basic Auth token from the Playground in the [Decodo dashboard](https://dashboard.decodo.com/) and export it before starting DeepSeek Harness:
 
 ```sh
-# Preferred
-export DECODO_API_KEY='your-api-key'
-
-# Or the Web Scraping API Basic token, from the Playground
 export SCRAPER_API_TOKEN='your-token'
 ```
-
-**Precedence:** `DECODO_API_KEY` → `SCRAPER_API_TOKEN`, the same order the Decodo CLI uses. Both env var names are configurable. With neither set, the provider reports itself unavailable and the tool call fails with a clear error. It never falls back to another provider.
 
 ## Test your setup
 
@@ -107,23 +103,23 @@ export SCRAPER_API_TOKEN='your-token'
 dsh --profile <name> --dump-config | grep -A4 -E '^- id: (web|tool-web|web-fetch-decodo)$'
 ```
 
-You should see `fetch: true`, `fetchProvider: decodo`, and the `web-fetch-decodo` row. Then ask the agent for a page that blocks anonymous requests:
+You should see `fetch: true`, `fetchProvider: decodo`, and the `web-fetch-decodo` row. Then ask the agent to fetch a page:
 
 ```sh
 dsh --profile headless "Fetch https://www.zillow.com/ and report the status and first heading"
 ```
 
-A status of 200 with real page content means the fetch went through Decodo. Zillow answers a plain request with a 403.
+Check that the tool returns a status and page content. The response may vary by site and time; an HTTP 200 alone does not establish which provider handled the fetch, so also check the pinned provider in `--dump-config`.
 
-## What installing changes in your profile
+## What the plugin changes in your profile
 
 Installing this plugin is your explicit choice to enable `web_fetch`. The bundle patch:
 
 - sets `tool-web` to `fetch: true` with a 60s `fetchTimeoutMs`, since dsh's default of 30s is short for protected sites,
-- pins `web.fetchProvider: decodo` so this provider wins even when dsh's own `http` provider is mounted,
+- pins `web.fetchProvider: decodo` so this provider wins even when the built-in `http` provider is mounted,
 - inserts the `web-fetch-decodo` row with the config below.
 
-dsh keeps its own `http` provider mounted. To switch back without uninstalling, override the pin in your profile's `cordis.patch.yml`:
+dsh keeps its built-in `http` provider mounted. To switch back without uninstalling, add or update the `web` row in your profile's `cordis.patch.yml`:
 
 ```yaml
 - id: web
@@ -132,6 +128,8 @@ dsh keeps its own `http` provider mounted. To switch back without uninstalling, 
     fetchProvider: http
 ```
 
+This example assumes your current search provider is `deepseek-official`. If it differs, use your existing `searchProvider` value. The patch replaces the row's entire `config`, so carry over any other settings you want to keep. You can check the current values with `dsh --profile <name> --dump-config`.
+
 ## Configuration
 
 Override in your profile's `cordis.patch.yml`. A patch replaces the row's whole `config`, so restate every field you want to keep.
@@ -139,30 +137,28 @@ Override in your profile's `cordis.patch.yml`. A patch replaces the row's whole 
 ```yaml
 - id: web-fetch-decodo
   config:
-    apiKeyEnv: DECODO_API_KEY     # env var holding the Decodo API key (preferred)
-    tokenEnv: SCRAPER_API_TOKEN   # env var holding the Web Scraping API Basic token (fallback)
+    tokenEnv: SCRAPER_API_TOKEN   # env var holding the Web Scraping API Basic Auth token
     output: markdown              # markdown (default) or html
-    maxFetchesPerSession: 200     # spend cap per dsh process; 0 disables
+    maxFetchesPerSession: 200     # fetch limit per dsh process; 0 disables
     maxContentChars: 200000       # body cap; longer bodies are cut and flagged truncated
     requestTimeoutMs: 60000       # request timeout, keep at or below the tool's fetchTimeoutMs
 ```
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `apiKeyEnv` | `DECODO_API_KEY` | Env var read first; sent as Bearer auth |
-| `tokenEnv` | `SCRAPER_API_TOKEN` | Fallback env var; sent as Basic auth |
-| `output` | `markdown` | `markdown` for Decodo's markdown, `html` for the raw page |
+| `tokenEnv` | `SCRAPER_API_TOKEN` | Env var holding the Web Scraping API Basic Auth token; sent as Basic Auth |
+| `output` | `markdown` | `markdown` for Decodo's Markdown, `html` for the raw page |
 | `maxFetchesPerSession` | `200` | Requests allowed per dsh process; `0` disables the cap |
 | `maxContentChars` | `200000` | Body cap; longer bodies are cut and flagged truncated |
 | `requestTimeoutMs` | `60000` | Request timeout |
 
-With `output: markdown` the API is asked for markdown and the result reaches the model unchanged. When the API cannot convert a page, because it is oversized, empty, or the conversion failed, it returns raw HTML with a note, and the plugin lets dsh convert it instead. With `output: html` the raw page always comes back for dsh to convert.
+With `output: markdown`, the plugin requests Markdown from Decodo. When conversion succeeds, the plugin passes the result to the model unchanged. If the page is too large or empty, or if conversion fails, Decodo returns raw HTML with a note. DeepSeek Harness then converts the HTML. With `output: html`, Decodo always returns raw HTML for DeepSeek Harness to convert.
 
-## Spend cap
+## Fetch limit
 
-Every fetch counts against `maxFetchesPerSession`, including attempts that fail. Past the cap the tool returns an error naming the setting and makes no further API calls until dsh restarts or the cap is raised.
+Every fetch counts against `maxFetchesPerSession`, including attempts that fail. Past the cap, the tool returns an error naming the setting and makes no further API calls until `dsh` restarts or the cap is raised.
 
-The counter is per dsh process. In a long-lived profile such as `web`, that is longer than one chat.
+The counter is per `dsh` process, so in a long-lived profile such as `web`, it may span multiple chats.
 
 ## Errors
 
@@ -170,39 +166,39 @@ Failures reach the model as `Error: <message>` with a machine-readable code.
 
 | Code | Cause |
 | --- | --- |
-| `DECODO_TOKEN_MISSING` | Neither credential env var is set |
+| `DECODO_TOKEN_MISSING` | No credential is configured |
 | `DECODO_AUTH_FAILED` | Credential rejected (401/403) |
 | `DECODO_RATE_LIMITED` | Rate limit reached (429) |
-| `DECODO_INVALID_REQUEST` | Request rejected (400/422), for example an unsupported URL |
-| `DECODO_SCRAPE_FAILED` | Scrape failed, or an API error |
-| `DECODO_FETCH_CAP_REACHED` | Spend cap hit |
-| `DECODO_BAD_RESPONSE` | Response could not be read |
+| `DECODO_INVALID_REQUEST` | Request rejected (400/422), for example, because the URL is unsupported |
+| `DECODO_SCRAPE_FAILED` | Scrape failed or the API returned an error |
+| `DECODO_FETCH_CAP_REACHED` | Fetch limit hit |
+| `DECODO_BAD_RESPONSE` | Response couldn't be read |
 | `WEB_INVALID_URL` | Not an http(s) URL |
 | `WEB_ABORTED` / `WEB_FETCH_TIMEOUT` | Cancelled or timed out |
-| `WEB_PROVIDER_ERROR` | Could not reach the API |
+| `WEB_PROVIDER_ERROR` | Couldn't reach the API |
 
-A page that answers with a non-2xx status is a result, not an error. The model sees `Fetched <url> (HTTP <status>)` and whatever body came back, matching dsh's seam contract.
+A page that answers with a non-2xx status is a result, not an error. The model sees `Fetched <url> (HTTP <status>)` and whatever body came back, matching dsh's provider contract.
 
 ## Disclosures
 
-- **Fetched content is untrusted input.** Pages can carry prompt-injection text. dsh labels fetched content as external data for the model; treat anything the agent reads from the web the same way.
-- **URLs go through Decodo.** Every URL the agent fetches is sent to the Decodo Web Scraping API and retrieved from Decodo infrastructure, not from your machine. Decodo sees the URLs; the target site sees Decodo, not you.
+- **Fetched content is untrusted input**. Pages can carry prompt-injection text. DeepSeek Harness labels fetched content as external data for the model; treat anything the agent reads from the web the same way.
+- **URLs go through Decodo**. Every URL the agent fetches is sent to the Decodo Web Scraping API and retrieved from Decodo infrastructure, not from your machine. Decodo sees the URLs; the target site sees Decodo, not you.
 - **Requests carry an `x-integration: dsh` header** so Decodo can attribute traffic to this plugin, the same way the Decodo CLI and MCP server tag theirs.
-- **Each fetch is billed** as one Web Scraping API request on your Decodo account.
+- **Decodo plan usage**. Every fetch attempt counts toward this plugin's `maxFetchesPerSession` limit, including failed attempts. Only successful scrapes count toward your Decodo plan's usage.
 
 ## Troubleshooting
 
-**`configured web provider "decodo" is registered but unavailable`**
+##**`configured web provider "decodo" is registered but unavailable`**
 
-No credential is set. Export `DECODO_API_KEY` or `SCRAPER_API_TOKEN` in the environment dsh runs in.
+No credential is set. Export `SCRAPER_API_TOKEN` in the environment where dsh runs.
 
 **`configured web provider "decodo" is not registered`**
 
-The plugin is not installed in the profile you are booting. Run `dsh plugin --profile <name> add @decodo/dsh-web-fetch` and check with `--dump-config`.
+The plugin isn't installed in the profile you're booting. Run `dsh plugin --profile <name> add @decodo/dsh-web-fetch` and check with `--dump-config`.
 
 **`Decodo authentication failed`**
 
-The credential was rejected. Check it in the [dashboard](https://dashboard.decodo.com/), and note that the API key and the Basic token are different values.
+Check your Web Scraping API Basic Auth token in the Playground in the [dashboard](https://dashboard.decodo.com/) and confirm that `SCRAPER_API_TOKEN` is exported in the environment where DeepSeek Harness runs.
 
 **The agent says the page was empty**
 
@@ -235,7 +231,7 @@ pnpm build
 ```sh
 pnpm typecheck
 pnpm test                             # unit tests, no network
-DECODO_API_KEY=... pnpm test:e2e      # gates against a fresh dsh install, see e2e/README.md
+pnpm test:e2e                         # requires credentials; see e2e/README.md
 ```
 
 ### Run it against a real agent
@@ -252,7 +248,7 @@ pnpm dev:web                                      # browser UI at http://127.0.0
 
 The HTTP layer is [`@decodo/sdk-ts`](https://github.com/Decodo/sdk-ts). It owns the endpoint, the auth header, the `x-integration` header, request validation, and the error classes the plugin maps onto dsh's `WebError` codes. The one thing the SDK cannot do is accept an external `AbortSignal`, so the plugin races the SDK call against dsh's signal: the tool call fails promptly on abort or timeout while the underlying request runs on until `requestTimeoutMs`. Keep that value at or below the tool's `fetchTimeoutMs`.
 
-`@deepseek-ai/dsh-web` is a peer dependency, for `WebError` and the provider types.
+`@deepseek-ai/dsh-web` is a peer dependency for `WebError` and the provider types.
 
 ### Branch protection
 
@@ -264,6 +260,18 @@ gh api repos/Decodo/dsh-web-fetch/rulesets -X POST --input .github/branch-rulese
 
 </details>
 
+## Other DeepSeek Harness fetch providers
+
+DeepSeek Harness plugins can provide different backends for the same `web_fetch` tool. Choose according to how you want pages retrieved:
+
+| Provider | Retrieval approach |
+| --- | --- |
+| Decodo (this plugin) | Decodo's hosted Web Scraping API, with a Basic Auth token and request-based usage |
+| [`dsh-web-fetch-playwright`](https://github.com/chendefine/dsh-web-fetch-playwright) | A local Playwright browser or an existing browser over CDP |
+| [`dsh-web-fetch-crw`](https://www.npmjs.com/package/%40jaco-tech/dsh-web-fetch-crw) | Your self-hosted crw service through its Firecrawl-compatible API |
+
+These are separate fetch providers with their own setup and behavior. Review their documentation for current requirements.
+
 ## Related repositories
 
 - [Decodo Web Scraping API](https://github.com/Decodo/Web-Scraping-API)
@@ -272,12 +280,12 @@ gh api repos/Decodo/dsh-web-fetch/rulesets -X POST --input .github/branch-rulese
 - [Decodo SDK for TypeScript](https://github.com/Decodo/sdk-ts)
 - [Decodo agent skills](https://github.com/Decodo/agent-skills)
 
-## Try it
+## Try it for free
 
-Install the plugin and let your dsh agent read the pages it could not reach before.
+Install the plugin and let your dsh agent fetch pages through Decodo.
 
 [Start scraping for free](https://dashboard.decodo.com/) | [Web Scraping API documentation](https://help.decodo.com/docs/web-scraping-api-introduction) | [Discord](https://discord.gg/Ja8dqKgvbZ)
 
 ## License
 
-All code is released under the [MIT License](https://github.com/Decodo/Decodo/blob/master/LICENSE).
+All code is released under the [MIT License](LICENSE).
