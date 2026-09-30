@@ -188,7 +188,7 @@ A page that answers with a non-2xx status is a result, not an error. The model s
 
 ## Troubleshooting
 
-##**`configured web provider "decodo" is registered but unavailable`**
+**`configured web provider "decodo" is registered but unavailable`**
 
 No credential is set. Export `SCRAPER_API_TOKEN` in the environment where dsh runs.
 
