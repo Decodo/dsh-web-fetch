@@ -12,7 +12,7 @@ A web fetch plugin for [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/d
 Install the plugin and the agent keeps calling `web_fetch` as usual. Decodo retrieves the page and returns readable content, with Markdown by default. You don't need to add a new agent tool or change its prompts.
 
 - Fetch pages that may return a `403` or bot challenge to a direct request, including retail, real estate, and job listings.
-- Render JavaScript-heavy pages and handle bot protection through the API. Some sites may still reject a request.
+- Handle bot protection through the API. Some sites may still reject a request.
 - Give the model Markdown by default; if Decodo returns HTML, dsh converts it to readable text.
 - Set a per-process fetch cap so an agent loop cannot keep making API requests indefinitely.
 
@@ -26,12 +26,11 @@ The agent still calls `web_fetch` with the same name and schema, and receives th
 
 ## When to use the Decodo plugin
 
-A direct fetch may receive a `403`, a bot challenge, or an unrendered page. For AI agent web scraping, Decodo handles retrieval and JavaScript rendering server-side, with anti-bot and CAPTCHA handling to help bypass bot detection where possible. Success still depends on the target page.
+A direct fetch may receive a `403` or a bot challenge. For AI agent web scraping, Decodo handles retrieval with anti-bot and CAPTCHA handling to help bypass bot detection where possible. Success still depends on the target page.
 
 Use this plugin when your agent needs to read the web as it actually is:
 
 - **Blocked sites**. Fetch retail, real estate, travel, or ticketing pages that may reject anonymous requests.
-- **Rendered pages**. Read content that appears only after JavaScript runs.
 - **Readable input**. Pass Markdown to the model when the API can convert the page; DeepSeek Harness converts returned HTML otherwise.
 - **Location-dependent pages**. Retrieve through Decodo's residential IP network instead of your machine's IP. This plugin does not expose a location selector in the configuration below.
 
