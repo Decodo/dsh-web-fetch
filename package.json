@@ -4,8 +4,10 @@
   "description": "DeepSeek Harness (dsh) plugin: Decodo Web Scraping API as the provider behind the built-in web_fetch tool, via @decodo/sdk-ts.",
   "type": "module",
   "main": "dist/index.js",
-  "private": true,
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "cordis.patch.yml",
@@ -27,6 +29,7 @@
   "engines": {
     "node": ">=20"
   },
+  "packageManager": "pnpm@10.33.3",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,6 +45,7 @@
     "plugin"
   ],
   "scripts": {
+    "prepack": "pnpm run build",
     "build": "tsc",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "node --test test/*.test.ts",
