@@ -1,6 +1,6 @@
 {
   "name": "@decodo/dsh-web-fetch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DeepSeek Harness (dsh) plugin: Decodo Web Scraping API as the provider behind the built-in web_fetch tool, via @decodo/sdk-ts.",
   "type": "module",
   "main": "dist/index.js",
@@ -55,11 +55,11 @@
     "dev:web": "./dev/dsh.sh web"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-web": "^0.1.2-rc.1"
+    "@deepseek-ai/dsh-web": ">=0.1.2-rc.1 <0.3.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-web": "0.1.2-rc.1",
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-web": "0.2.0-rc.2",
     "@types/node": "^24",
     "typescript": "^5.9"
   },
