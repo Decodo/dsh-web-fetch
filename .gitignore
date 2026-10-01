@@ -5,3 +5,5 @@ e2e/results/
 dev/node_modules/
 dev/home/
 dist/
+.vscode/
+dev/.env
