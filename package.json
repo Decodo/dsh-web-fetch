@@ -1,6 +1,6 @@
 {
   "name": "@decodo/dsh-web-fetch",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "DeepSeek Harness (dsh) plugin: Decodo Web Scraping API as the provider behind the built-in web_fetch tool, via @decodo/sdk-ts.",
   "type": "module",
   "main": "dist/index.js",
