@@ -60,7 +60,7 @@ The plugin gives the agent an API-backed fetch provider without requiring you to
 ## Quick start
 
 1. **Create an account** on the Decodo [dashboard](https://dashboard.decodo.com/).
-2. **Get your Web Scraping API Basic Auth token** from the Decodo [Playground](https://dashboard.decodo.com/playground).
+2. **Get your Web Data API key** from the Decodo [Playground](https://dashboard.decodo.com/web-data/playground). Older plans only have a basic auth token, which also works.
 3. **Install Node.js 20+ and pnpm 10.x** using the instructions at [nodejs.org](https://nodejs.org/) and [pnpm.io](https://pnpm.io/).
 4. **Install DeepSeek Harness and this plugin** with the commands below.
 5. **Ask the agent to fetch a page** and check the status and content it returns.
@@ -68,7 +68,7 @@ The plugin gives the agent an API-backed fetch provider without requiring you to
 ```sh
 pnpm add -g @deepseek-ai/dsh
 dsh plugin --profile headless add @decodo/dsh-web-fetch
-export SCRAPER_API_TOKEN='your-token'
+export DECODO_API_KEY='your-api-key'
 
 dsh --profile headless "Fetch https://www.zillow.com/ and tell me the first heading"
 ```
@@ -90,11 +90,13 @@ That's the whole install. The package ships a bundle patch that dsh inserts into
 
 ## Authentication
 
-Copy your Web Scraping API Basic Auth token from the Playground in the [Decodo dashboard](https://dashboard.decodo.com/) and export it before starting DeepSeek Harness:
+Copy your Web Data API key from the [Playground](https://dashboard.decodo.com/web-data/playground) and export it before starting DeepSeek Harness:
 
 ```sh
-export SCRAPER_API_TOKEN='your-token'
+export DECODO_API_KEY='your-api-key'
 ```
+
+Older plans only have a basic authentication token. Export it as `SCRAPER_API_TOKEN` instead. If both are set, the API key is used.
 
 ## Test your setup
 
@@ -136,7 +138,8 @@ Override in your profile's `cordis.patch.yml`. A patch replaces the row's whole 
 ```yaml
 - id: web-fetch-decodo
   config:
-    tokenEnv: SCRAPER_API_TOKEN   # env var holding the Web Scraping API Basic Auth token
+    apiKeyEnv: DECODO_API_KEY     # env var holding the Web Data API key
+    tokenEnv: SCRAPER_API_TOKEN   # env var holding the basic auth token (older plans)
     output: markdown              # markdown (default) or html
     maxFetchesPerSession: 200     # fetch limit per dsh process; 0 disables
     maxContentChars: 200000       # body cap; longer bodies are cut and flagged truncated
@@ -145,7 +148,8 @@ Override in your profile's `cordis.patch.yml`. A patch replaces the row's whole 
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `tokenEnv` | `SCRAPER_API_TOKEN` | Env var holding the Web Scraping API Basic Auth token; sent as Basic Auth |
+| `apiKeyEnv` | `DECODO_API_KEY` | Env var holding the Web Data API key; sent as Bearer auth. Takes precedence over the token |
+| `tokenEnv` | `SCRAPER_API_TOKEN` | Env var holding the basic auth token for older plans; sent as Basic Auth |
 | `output` | `markdown` | `markdown` for Decodo's Markdown, `html` for the raw page |
 | `maxFetchesPerSession` | `200` | Requests allowed per dsh process; `0` disables the cap |
 | `maxContentChars` | `200000` | Body cap; longer bodies are cut and flagged truncated |
@@ -189,7 +193,7 @@ A page that answers with a non-2xx status is a result, not an error. The model s
 
 **`configured web provider "decodo" is registered but unavailable`**
 
-No credential is set. Export `SCRAPER_API_TOKEN` in the environment where dsh runs.
+No credential is set. Export `DECODO_API_KEY` (or `SCRAPER_API_TOKEN` on older plans) in the environment where dsh runs.
 
 **`configured web provider "decodo" is not registered`**
 
@@ -197,7 +201,7 @@ The plugin isn't installed in the profile you're booting. Run `dsh plugin --prof
 
 **`Decodo authentication failed`**
 
-Check your Web Scraping API Basic Auth token in the Playground in the [dashboard](https://dashboard.decodo.com/) and confirm that `SCRAPER_API_TOKEN` is exported in the environment where DeepSeek Harness runs.
+Check your API key (or basic auth token on older plans) in the [Playground](https://dashboard.decodo.com/web-data/playground) and confirm that `DECODO_API_KEY` (or `SCRAPER_API_TOKEN`) is exported in the environment where DeepSeek Harness runs.
 
 **The agent says the page was empty**
 
@@ -265,7 +269,7 @@ DeepSeek Harness plugins can provide different backends for the same `web_fetch`
 
 | Provider | Retrieval approach |
 | --- | --- |
-| Decodo (this plugin) | Decodo's hosted Web Scraping API, with a Basic Auth token and request-based usage |
+| Decodo (this plugin) | Decodo's hosted Web Scraping API, with an API key or basic auth token and request-based usage |
 | [`dsh-web-fetch-playwright`](https://github.com/chendefine/dsh-web-fetch-playwright) | A local Playwright browser or an existing browser over CDP |
 | [`dsh-web-fetch-crw`](https://www.npmjs.com/package/%40jaco-tech/dsh-web-fetch-crw) | Your self-hosted crw service through its Firecrawl-compatible API |
 
