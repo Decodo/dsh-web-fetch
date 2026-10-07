@@ -245,7 +245,7 @@ pnpm dev "say hi and list your tools"             # one-shot headless run
 pnpm dev:web                                      # browser UI at http://127.0.0.1:3080
 ```
 
-`dev/dsh.sh` reads the credential from the environment and falls back to the Decodo CLI token in `~/.config/decodo/config.json`. The model comes from `dev/model.patch.yml`, an OpenAI-compatible route configured by `TEST_GATEWAY_URL`, `TEST_API_KEY`, and `TEST_MODEL`; any chat-completions endpoint works. The plugin is linked and the wrapper rebuilds before each run, so edits to `src/provider.ts` apply on the next run.
+`dev/dsh.sh` reads the credential from the environment and falls back to the Decodo CLI API key or token in `~/.config/decodo/config.json`. The model comes from `dev/model.patch.yml`, an OpenAI-compatible route configured by `TEST_GATEWAY_URL`, `TEST_API_KEY`, and `TEST_MODEL`; any chat-completions endpoint works. The plugin is linked and the wrapper rebuilds before each run, so edits to `src/provider.ts` apply on the next run.
 
 ### Implementation notes
 
