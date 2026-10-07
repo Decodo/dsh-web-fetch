@@ -6,7 +6,7 @@ plugin is TypeScript that dsh loads unbuilt, so the runner needs Node 22.18 or
 newer for native type stripping; the plugin itself still runs on Node 20.
 
 ```
-SCRAPER_API_TOKEN=... ./e2e/run.sh
+DECODO_API_KEY=... ./e2e/run.sh   # SCRAPER_API_TOKEN=... on older plans
 ```
 
 What it does, and how each gate is measured:
