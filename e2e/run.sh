@@ -35,7 +35,7 @@ grep -q 'fetchProvider: decodo' "$RESULTS/dump-config.yml" && grep -q "name: '@d
   && grep -q 'fetchTimeoutMs: 60000' "$RESULTS/dump-config.yml"
 gate "plugin add activates fetch and pins the provider" $?
 
-: "${SCRAPER_API_TOKEN:?set SCRAPER_API_TOKEN}"
+: "${DECODO_API_KEY:-${SCRAPER_API_TOKEN:?set DECODO_API_KEY (or SCRAPER_API_TOKEN on older plans)}}"
 E2E_MODE=bench E2E_URLS="$ROOT/e2e/urls.json" E2E_OUT="$RESULTS/bench.json" \
   "$DSH" --profile headless --patch "$ROOT/e2e/bench.patch.yml" "noop" >/dev/null
 node -e '
@@ -52,7 +52,7 @@ env -u SCRAPER_API_TOKEN -u DECODO_API_KEY E2E_MODE=missing-token E2E_OUT="$RESU
 expect_code "$RESULTS/missing-token.json" WEB_PROVIDER_CONFIGURED_UNAVAILABLE
 gate "missing token fails clearly with no fallback" $?
 
-SCRAPER_API_TOKEN=bm90YXRva2Vu E2E_MODE=missing-token E2E_OUT="$RESULTS/wrong-token.json" \
+env -u DECODO_API_KEY SCRAPER_API_TOKEN=bm90YXRva2Vu E2E_MODE=missing-token E2E_OUT="$RESULTS/wrong-token.json" \
   "$DSH" --profile headless --patch "$ROOT/e2e/bench.patch.yml" "noop" >/dev/null
 expect_code "$RESULTS/wrong-token.json" DECODO_AUTH_FAILED
 gate "wrong token surfaces the API auth error" $?
