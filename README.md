@@ -255,11 +255,20 @@ The HTTP layer is [`@decodo/sdk-ts`](https://github.com/Decodo/sdk-ts). It owns 
 
 ### Branch protection
 
-`.github/branch-ruleset.json` mirrors the ruleset on [Decodo/cli](https://github.com/Decodo/cli): pull requests only, two approvals, squash or rebase merges, no force pushes or branch deletion. GitHub rejects rulesets on private repositories under the organization's current plan, so apply it once this repository is public:
+`.github/branch-ruleset.json` mirrors the ruleset on `main`: pull requests only, one approval, squash merges only, CI and the PR title check required, no force pushes or branch deletion. To apply changes to it:
 
 ```sh
-gh api repos/Decodo/dsh-web-fetch/rulesets -X POST --input .github/branch-ruleset.json
+id=$(gh api repos/Decodo/dsh-web-fetch/rulesets --jq '.[] | select(.name == "dsh-web-fetch-main") | .id')
+gh api "repos/Decodo/dsh-web-fetch/rulesets/$id" -X PUT --input .github/branch-ruleset.json
 ```
+
+### Releases
+
+Releases are automated. Merging to `main` publishes a new version based on the
+PR title, which must follow [Conventional Commits](https://www.conventionalcommits.org):
+`fix:` → patch, `feat:` → minor, `feat!:` or a `BREAKING CHANGE:` footer → major.
+`chore:`, `docs:`, `ci:`, `refactor:`, `test:` don't release. Don't edit the
+version in `package.json`.
 
 </details>
 
